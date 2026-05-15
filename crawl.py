@@ -1,66 +1,33 @@
 # -*- coding: utf-8 -*-
+import requests
 import re
-import time
-from playwright.sync_api import sync_playwright
 
-INDEX_URL = "https://www.ntjoy.com/ntw/broadcastTvs.html?menuCode=ntw005"
-BASE_URL = "https://www.ntjoy.com"
+HEADERS = {
+    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/120.0.0.0 Safari/537.36",
+    "Referer": "https://www.ntjoy.com/"
+}
 
 def main():
-    m3u_content = "#EXTM3U\n"
+    # 直接抓接口拿到所有直播源
+    api_url = "https://www.ntjoy.com/ntw/api/getLiveChannelList"
+    res = requests.get(api_url, headers=HEADERS, timeout=15)
+    text = res.text
 
-    with sync_playwright() as p:
-        browser = p.chromium.launch(headless=True)
-        context = browser.new_context(
-            user_agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/120.0.0.0 Safari/537.36"
-        )
-        page = context.new_page()
+    # 匹配频道名 + m3u8
+    m3u = "#EXTM3U\n"
+    # 匹配格式：名称...url...m3u8
+    urls = re.findall(r'https?://[^",]+?\.m3u8', text)
+    names = re.findall(r'channelName["\']:\s*["\']([^"\']+)["\']', text)
 
-        # 打开列表页
-        page.goto(INDEX_URL, timeout=30000)
-        time.sleep(3)
+    # 对齐写入
+    for n, u in zip(names, urls):
+        m3u += f"#EXTINF:-1,{n}\n{u}\n"
 
-        # 获取频道a标签
-        items = page.locator('div[class*="channel-item"] a')
-        count = items.count()
-        print(f"检测到频道数量：{count}")
-
-        for i in range(count):
-            try:
-                name = items.nth(i).text_content().strip()
-                href = items.nth(i).get_attribute("href")
-                if not name or not href:
-                    continue
-
-                play_url = href if href.startswith("http") else BASE_URL + href
-                print(f"正在解析：{name} {play_url}")
-
-                # 打开播放页
-                page2 = context.new_page()
-                page2.goto(play_url, timeout=30000)
-                time.sleep(2)
-
-                # 抓取所有m3u8
-                html = page2.content()
-                m3u8_list = re.findall(r'https?://[^"\']+?\.m3u8(\?[^"\']+)?', html)
-                if m3u8_list:
-                    real_url = m3u8_list[0]
-                    m3u_content += f"#EXTINF:-1,{name}\n{real_url}\n"
-                    print(f"✅ 成功：{real_url}")
-                else:
-                    print(f"❌ 未找到直播源：{name}")
-                page2.close()
-            except Exception as e:
-                print(f"❌ 解析异常：{e}")
-                continue
-
-        browser.close()
-
-    # 写入m3u
+    # 强制覆盖写入，不管有没有变化
     with open("tv.m3u", "w", encoding="utf-8") as f:
-        f.write(m3u_content)
+        f.write(m3u)
 
-    print("✅ 已生成 tv.m3u")
+    print(f"抓取完成，共 {len(urls)} 个直播源")
 
 if __name__ == "__main__":
     main()
