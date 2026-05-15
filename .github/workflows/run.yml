@@ -1,7 +1,7 @@
 name: 每30分钟更新直播源
 on:
   schedule:
-    cron: '*/30 * * * *'
+    - cron: '*/30 * * * *'
   workflow_dispatch:
 
 env:
@@ -35,5 +35,5 @@ jobs:
           git config --global user.name "github-actions[bot]"
           git config --global user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add tv.m3u
-          git diff --quiet && git diff --staged --quiet || git commit -m "Auto update tv.m3u $(date +'%Y-%m-%d %H:%M')"
+          git diff --quiet && git diff --staged --quiet || git commit -m "Auto update tv.m3u"
           git push
