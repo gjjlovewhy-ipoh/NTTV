@@ -1,38 +1,36 @@
-name: 每30分钟自动抓取直播源
+name: 每30分钟更新直播源
 on:
   schedule:
-    - cron: '*/30 * * * *'
+    cron: '*/30 * * * *'
   workflow_dispatch:
 
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
-jobs:
-  crawl:
-    runs-on: ubuntu-latest
-    timeout-minutes: 8
-    steps:
-      - name: 拉取代码
-        uses: actions/checkout@v4
+permissions:
+  contents: write
 
-      - name: 配置Python
+jobs:
+  run:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set Python
         uses: actions/setup-python@v5
         with:
-          python-version: "3.11"
+          python-version: "3.10"
 
-      - name: 安装依赖
-        run: pip install -r requirements.txt
+      - name: Install dep
+        run: pip install requests
 
-      - name: 安装Chromium浏览器
-        run: playwright install chromium --with-deps
-
-      - name: 运行爬虫
+      - name: Run crawl
         run: python crawl.py
 
-      - name: 提交更新
+      - name: Commit & Push
         run: |
-          git config --global user.name "github-actions"
-          git config --global user.email "actions@github.com"
+          git config user.name "Bot"
+          git config user.email "bot@github.com"
           git add tv.m3u
-          git commit -m "自动更新直播源 $(date +'%Y-%m-%d %H:%M')" || echo "无变更"
+          git commit -m "Auto update tv.m3u"
           git push
