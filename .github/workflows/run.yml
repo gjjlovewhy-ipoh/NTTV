@@ -4,10 +4,14 @@ on:
     - cron: '*/30 * * * *'
   workflow_dispatch:
 
+env:
+  # 强制使用 Node24，消除弃用警告
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
 jobs:
   crawl:
     runs-on: ubuntu-latest
-    timeout-minutes: 5  # 超时5分钟
+    timeout-minutes: 5
     steps:
       - name: 拉取代码
         uses: actions/checkout@v4
